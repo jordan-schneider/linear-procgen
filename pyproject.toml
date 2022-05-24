@@ -1,0 +1,33 @@
+[project]
+name = "linear_procgen"
+version = "0.0.1"
+description = "Some procgen environments with linear reward features"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+  {email = "jordan.jack.schneider@gmail.com"},
+  {name = "Jordan Schneider"}
+]
+classifiers = [
+  "Programming Language :: Python :: 3"
+]
+
+dependencies = [
+    "numpy >= 1.21",
+    "procgen @ git+https://github.com/jordan-schneider/procgen@master#egg=procgen"
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "black",
+  "mypy",
+  "pylint"
+]
+
+[project.urls]
+repository = "https://github.com/jordan-schneider/linear-procgen"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
