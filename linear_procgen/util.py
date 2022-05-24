@@ -10,20 +10,7 @@ from procgen.env import ProcgenGym3Env
 from linear_procgen import Maze, Miner
 from linear_procgen.feature_envs import FeatureEnv
 
-ENV_NAMES = Literal[
-    "maze", "miner", "maze-native", "miner-native", "probe-1", "probe-2"
-]
-FEATURE_ENV_NAMES = Literal["maze", "miner"]
-
-
-@overload
-def make_env(name: FEATURE_ENV_NAMES, num: int, **kwargs) -> FeatureEnv:
-    pass
-
-
-@overload
-def make_env(name: ENV_NAMES, num: int, **kwargs) -> ProcgenGym3Env:
-    pass
+ENV_NAMES = Literal["maze", "miner"]
 
 
 def make_env(
@@ -32,7 +19,7 @@ def make_env(
     reward: Optional[Union[float, np.ndarray]] = None,
     extract_rgb: bool = True,
     **kwargs
-) -> ProcgenGym3Env:
+) -> FeatureEnv:
     if name == "maze":
         assert reward is not None
         if not isinstance(reward, np.ndarray):
