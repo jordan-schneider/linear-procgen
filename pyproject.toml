@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "linear_procgen"
 version = "0.0.1"
@@ -11,7 +15,6 @@ authors = [
 classifiers = [
   "Programming Language :: Python :: 3"
 ]
-
 dependencies = [
     "numpy >= 1.21",
     "procgen @ git+https://github.com/jordan-schneider/procgen@master#egg=procgen"
@@ -28,6 +31,6 @@ test = [
 [project.urls]
 repository = "https://github.com/jordan-schneider/linear-procgen"
 
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+[tool.setuptools]
+packages = ["linear_procgen"]
+package-data = {linear_procgen = ["py.typed"]}
