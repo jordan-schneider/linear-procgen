@@ -28,6 +28,8 @@ class MinerState(StateInterface):
         6: "exit",
         9: "dirt",
         10: "oob_wall",
+        11: "dead_player",
+        12: "mud",
         100: "space",
     }
 
@@ -82,8 +84,8 @@ class Miner(FeatureEnv[MinerState]):
         normalize_features: bool = False,
         **kwargs,
     ) -> None:
-        if reward_weights.shape[0] != 4:
-            raise ValueError(f"Must supply 4 reward weights, {reward_weights=}")
+        if reward_weights.shape[0] != 5:
+            raise ValueError(f"Must supply 5 reward weights, {reward_weights=}")
 
         self._reward_weights = reward_weights
         self._n_features = reward_weights.shape[0]
@@ -102,8 +104,12 @@ class Miner(FeatureEnv[MinerState]):
         )
         self.states = self.make_latent_states()
         self.last_diamonds = np.ones(num, dtype=int) * -1
+        self.last_muds = np.ones(num, dtype=int) * -1
         self.diamonds = np.array(
             [Miner.diamonds_remaining(state) for state in self.states], dtype=int
+        )
+        self.muds = np.array(
+            [Miner.muds_remaining(state) for state in self.states], dtype=int
         )
         self.firsts = [True] * num
 
@@ -112,9 +118,13 @@ class Miner(FeatureEnv[MinerState]):
     def act(self, action: np.ndarray) -> None:
         super().act(action)
         self.last_diamonds = self.diamonds
+        self.last_muds = self.muds
         self.states = self.make_latent_states()
         self.diamonds = np.array(
             [Miner.diamonds_remaining(state) for state in self.states], dtype=np.float32
+        )
+        self.muds = np.array(
+            [Miner.muds_remaining(state) for state in self.states], dtype=np.float32
         )
 
     def observe(self) -> Tuple[np.ndarray, Any, Any]:
@@ -153,6 +163,14 @@ class Miner(FeatureEnv[MinerState]):
                 )
             ]
         )
+        step_in_mud = np.array(
+            [
+                Miner.got_mud(n_mud, last_n_mud, first)
+                for n_mud, last_n_mud, first in zip(
+                    self.mud, self.last_mud, self.firsts
+                )
+            ]
+        )
 
         diamonds = np.array(self.diamonds, dtype=np.float32)
 
@@ -160,6 +178,7 @@ class Miner(FeatureEnv[MinerState]):
         assert len(dangers) == self.num
         assert len(dists) == self.num
         assert len(diamonds) == self.num
+        assert len(step_in_mud) == self.num
 
         if self.use_normalized_features:
             max_dist = float(self.states[0].grid.shape[0] * 2 - 1)
@@ -168,7 +187,9 @@ class Miner(FeatureEnv[MinerState]):
             max_diamonds = DIAMOND_PERCENT * self.states[0].grid.size
             diamonds /= max_diamonds
 
-        features = np.array([pickup, dangers, dists, diamonds], dtype=np.float32).T
+        features = np.array(
+            [pickup, step_in_mud, dangers, dists, diamonds], dtype=np.float32
+        ).T
         assert features.shape == (self.num, self._n_features)
 
         return features
@@ -233,6 +254,10 @@ class Miner(FeatureEnv[MinerState]):
         return np.sum((state.grid == 2) | (state.grid == 4))
 
     @staticmethod
+    def muds_remaining(state: MinerState) -> int:
+        return np.sum((state.grid == 12))
+
+    @staticmethod
     def got_diamond(n_diamonds: int, last_n_diamonds: int, first: bool) -> bool:
         if first:
             return False
@@ -242,3 +267,14 @@ class Miner(FeatureEnv[MinerState]):
                 f"There are {n_diamonds} this step vs {last_n_diamonds} last step, and first={first}."
             )
         return n_diamonds != last_n_diamonds
+
+    @staticmethod
+    def got_mud(n_mud: int, last_n_mud: int, first: bool) -> bool:
+        if first:
+            return False
+
+        if n_mud > last_n_mud:
+            raise Exception(
+                f"There are {n_mud} this step vs {last_n_mud} last step, and first={first}."
+            )
+        return n_mud != last_n_mud
