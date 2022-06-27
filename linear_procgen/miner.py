@@ -28,8 +28,8 @@ class MinerState(StateInterface):
         6: "exit",
         9: "dirt",
         10: "oob_wall",
-        11: "dead_player",
-        12: "mud",
+        11: "mud",
+        12: "dead_player",
         100: "space",
     }
 
@@ -44,6 +44,10 @@ class MinerState(StateInterface):
         assert len(self.grid.shape) == 2
         self.agent_pos = agent_pos
         self.exit_pos = exit_pos
+
+    @staticmethod
+    def grid_item_codes() -> Dict[str, int]:
+        return {name: code for code, name in MinerState.GRID_ITEM_NAMES.items()}
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, MinerState):
@@ -167,7 +171,7 @@ class Miner(FeatureEnv[MinerState]):
             [
                 Miner.got_mud(n_mud, last_n_mud, first)
                 for n_mud, last_n_mud, first in zip(
-                    self.mud, self.last_mud, self.firsts
+                    self.muds, self.last_muds, self.firsts
                 )
             ]
         )
@@ -203,22 +207,38 @@ class Miner(FeatureEnv[MinerState]):
         state: MinerState, return_time_to_die: bool = False, debug: bool = False
     ) -> Union[bool, Tuple[bool, int]]:
         agent_x, agent_y = state.agent_pos
-
+        codes = MinerState.grid_item_codes()
+        MOVING_OBJECTS = {codes["moving_diamond"], codes["moving_boulder"]}
+        SOLID_OBJECTS = {
+            codes["dirt"],
+            codes["mud"],
+            codes["boulder"],
+            codes["diamond"],
+            codes["oob_wall"],
+        }
+        DANGEROUS_OBJECTS = {
+            codes["boulder"],
+            codes["diamond"],
+            codes["moving_diamond"],
+            codes["moving_boulder"],
+        }
+        STATIONARY_OBJECTS = {codes["dirt"], codes["mud"], codes["oob_wall"]}
         # You can't be in danger if there's nothing above you
         if agent_y + 1 >= state.grid.shape[1]:
             return (False, -1) if return_time_to_die else False
 
         # You are only in danger if the thing directly above you is moving
-        if state.grid[agent_x, agent_y + 1] in {3, 4}:
+        above = state.grid[agent_x, agent_y + 1]
+        if above in MOVING_OBJECTS:
             return (True, 1) if return_time_to_die else True
-        elif state.grid[agent_x, agent_y + 1] in {1, 2, 9, 10}:
+        elif above in SOLID_OBJECTS:
             return (False, -1) if return_time_to_die else False
 
         for y in range(agent_y + 2, state.grid.shape[1]):
-            if state.grid[agent_x, y] in {1, 2, 3, 4}:
+            if state.grid[agent_x, y] in DANGEROUS_OBJECTS:
                 t = y - agent_y
                 return (True, t) if return_time_to_die else True
-            elif state.grid[agent_x, y] in {9, 10}:
+            elif state.grid[agent_x, y] in STATIONARY_OBJECTS:
                 return (False, -1) if return_time_to_die else False
 
         return (False, -1) if return_time_to_die else False
@@ -251,11 +271,14 @@ class Miner(FeatureEnv[MinerState]):
 
     @staticmethod
     def diamonds_remaining(state: MinerState) -> int:
-        return np.sum((state.grid == 2) | (state.grid == 4))
+        codes = MinerState.grid_item_codes()
+        return np.sum(
+            (state.grid == codes["diamond"]) | (state.grid == codes["moving_diamond"])
+        )
 
     @staticmethod
     def muds_remaining(state: MinerState) -> int:
-        return np.sum((state.grid == 12))
+        return np.sum((state.grid == MinerState.grid_item_codes()["mud"]))
 
     @staticmethod
     def got_diamond(n_diamonds: int, last_n_diamonds: int, first: bool) -> bool:
@@ -264,7 +287,7 @@ class Miner(FeatureEnv[MinerState]):
 
         if n_diamonds > last_n_diamonds:
             raise Exception(
-                f"There are {n_diamonds} this step vs {last_n_diamonds} last step, and first={first}."
+                f"Diamonds increased from {n_diamonds} to {last_n_diamonds} and first={first}."
             )
         return n_diamonds != last_n_diamonds
 
@@ -275,6 +298,6 @@ class Miner(FeatureEnv[MinerState]):
 
         if n_mud > last_n_mud:
             raise Exception(
-                f"There are {n_mud} this step vs {last_n_mud} last step, and first={first}."
+                f"Mud tiles increased from {last_n_mud} to {n_mud} and first={first}."
             )
         return n_mud != last_n_mud
