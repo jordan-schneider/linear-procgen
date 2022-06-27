@@ -28,7 +28,7 @@ def make_env(
     elif name == "miner":
         assert reward is not None
         if not isinstance(reward, np.ndarray):
-            reward = np.full(shape=4, fill_value=reward)
+            reward = np.full(shape=5, fill_value=reward)
         env = Miner(reward, num, **kwargs)
     else:
         env = ProcgenGym3Env(num=num, env_name=name)
