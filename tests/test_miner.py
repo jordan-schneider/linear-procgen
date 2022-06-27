@@ -119,6 +119,29 @@ def test_diamonds_remaining_decreasing(actions: List[int], seed: int):
 
 @settings(deadline=3000)
 @given(
+    actions=lists(integers(min_value=0, max_value=15), min_size=1, max_size=10),
+    seed=integers(0, 2 ** 31 - 1),
+)
+def test_mud_remaining_decreasing(actions: List[int], seed: int):
+    env = Miner(reward_weights=np.zeros(N_FEATURES), num=1, rand_seed=seed)
+    last_muds = 35 * 35 + 1  # number of cells + 1
+    for action in actions:
+        env.act(np.array([action]))
+        _, _, first = env.observe()
+
+        if first:
+            last_muds = 35 * 35 + 1
+
+        state = env.make_latent_states()[0]
+
+        muds = env.muds_remaining(state)
+
+        assert muds <= last_muds
+        last_muds = muds
+
+
+@settings(deadline=3000)
+@given(
     seed=integers(0, 2 ** 31 - 1),
 )
 def test_start_diamonds_remaining(seed: int):
