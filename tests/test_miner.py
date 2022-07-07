@@ -17,11 +17,11 @@ DANGEROUS_OBJECTS: Final = (1, 2, 3, 4)
 PATHABLE_OBJECTS: Final = (9, 100)
 DIAMONDS = (1, 3)
 
-N_FEATURES = 5
+N_FEATURES = 6
 
 
 @settings(deadline=None)
-@given(seed=integers(0, 2 ** 31 - 1))
+@given(seed=integers(0, 2**31 - 1))
 def test_first(seed: int) -> None:
     env = Miner(reward_weights=np.zeros(N_FEATURES), num=1, rand_seed=seed)
     _, _, first = env.observe()
@@ -34,21 +34,25 @@ def test_first(seed: int) -> None:
         if not success:
             pass
 
+        old_agent_state = env.make_latent_states()[0].agent_pos
         go_down(env)
+        new_agent_state = env.make_latent_states()[0].agent_pos
+        assert new_agent_state[1] < old_agent_state[1]
 
         # Take two empty actions because the first one is a noop frame to show users that the agent died.
         env.act(np.array([NONE]))
         env.act(np.array([NONE]))
         _, _, first = env.observe()
+        final_state = env.make_latent_states()[0]
         assert (
             first
-        ), f"Not first after death. start_state=\n{start_state.grid}, path={path}, current_state=\n{env.make_latent_states()[0].grid}"
+        ), f"Not first after death. start_pos={start_state.agent_pos}, start_state=\n{start_state.grid}, path={path}, current_pos={final_state.agent_pos}, current_state=\n{final_state.grid}"
 
 
 @settings(deadline=3000)
 @given(
     actions=lists(integers(min_value=0, max_value=15), min_size=1, max_size=10),
-    seed=integers(0, 2 ** 31 - 1),
+    seed=integers(0, 2**31 - 1),
 )
 def test_grid_items(actions: List[int], seed: int) -> None:
     env = Miner(reward_weights=np.zeros(N_FEATURES), num=1, rand_seed=seed)
@@ -68,7 +72,7 @@ def test_grid_items(actions: List[int], seed: int) -> None:
 @settings(deadline=3000)
 @given(
     actions=lists(integers(min_value=0, max_value=15), min_size=1, max_size=10),
-    seed=integers(0, 2 ** 31 - 1),
+    seed=integers(0, 2**31 - 1),
 )
 def test_empty_increasing(actions: List[int], seed: int):
     env = Miner(reward_weights=np.zeros(N_FEATURES), num=1, rand_seed=seed)
@@ -97,7 +101,7 @@ def test_empty_increasing(actions: List[int], seed: int):
 @settings(deadline=3000)
 @given(
     actions=lists(integers(min_value=0, max_value=15), min_size=1, max_size=10),
-    seed=integers(0, 2 ** 31 - 1),
+    seed=integers(0, 2**31 - 1),
 )
 def test_diamonds_remaining_decreasing(actions: List[int], seed: int):
     env = Miner(reward_weights=np.zeros(N_FEATURES), num=1, rand_seed=seed)
@@ -120,7 +124,7 @@ def test_diamonds_remaining_decreasing(actions: List[int], seed: int):
 @settings(deadline=3000)
 @given(
     actions=lists(integers(min_value=0, max_value=15), min_size=1, max_size=10),
-    seed=integers(0, 2 ** 31 - 1),
+    seed=integers(0, 2**31 - 1),
 )
 def test_mud_remaining_decreasing(actions: List[int], seed: int):
     env = Miner(reward_weights=np.zeros(N_FEATURES), num=1, rand_seed=seed)
@@ -142,7 +146,7 @@ def test_mud_remaining_decreasing(actions: List[int], seed: int):
 
 @settings(deadline=3000)
 @given(
-    seed=integers(0, 2 ** 31 - 1),
+    seed=integers(0, 2**31 - 1),
 )
 def test_start_diamonds_remaining(seed: int):
     frac = 12 / 400.0
@@ -154,7 +158,7 @@ def test_start_diamonds_remaining(seed: int):
 
 @settings(deadline=3000)
 @given(
-    seed=integers(0, 2 ** 31 - 1),
+    seed=integers(0, 2**31 - 1),
 )
 def test_dist_to_diamond(seed: int):
     env = Miner(reward_weights=np.zeros(N_FEATURES), num=1, rand_seed=seed)
@@ -196,7 +200,7 @@ def test_dist_to_diamond(seed: int):
 
 @settings(deadline=3000)
 @given(
-    seed=integers(0, 2 ** 31 - 1),
+    seed=integers(0, 2**31 - 1),
 )
 def test_safe_at_start(seed):
     env = Miner(reward_weights=np.zeros(N_FEATURES), num=1, rand_seed=seed)
@@ -344,7 +348,7 @@ def find_path_to_dangerous_state(state: MinerState) -> Optional[List[Action]]:
 
 @settings(deadline=3000)
 @given(
-    seed=integers(0, 2 ** 31 - 1),
+    seed=integers(0, 2**31 - 1),
 )
 def test_in_danger(seed):
     # We need to find a boulder or diamond with a dirt directly underneath it and a tile we can move
@@ -389,7 +393,6 @@ def go_down(env: Miner) -> None:
     # Occassionally we can't do this the first timestep because something is in the process of
     # falling below us.
     while agent_pos[0] == old_agent_pos[0] and agent_pos[1] == old_agent_pos[1]:
-        old_agent_pos = agent_pos
         env.act(np.array([DOWN]))
         agent_pos = env.make_latent_states()[0].agent_pos
 
@@ -410,7 +413,7 @@ def follow_path(env: Miner, path: Sequence[Action]) -> bool:
 
 @settings(deadline=3000)
 @given(
-    seed=integers(0, 2 ** 31 - 1),
+    seed=integers(0, 2**31 - 1),
     reward_weights=arrays(
         np.float64,
         (N_FEATURES,),
@@ -430,7 +433,7 @@ def test_reward(seed: int, reward_weights: np.ndarray) -> None:
 @settings(deadline=3000)
 @given(
     actions=lists(integers(min_value=0, max_value=15), min_size=1, max_size=10),
-    seed=integers(0, 2 ** 31 - 1),
+    seed=integers(0, 2**31 - 1),
 )
 def test_normalized_features(seed: int, actions: List[int]) -> None:
     env = Miner(

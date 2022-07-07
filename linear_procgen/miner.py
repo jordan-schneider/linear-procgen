@@ -88,8 +88,8 @@ class Miner(FeatureEnv[MinerState]):
         normalize_features: bool = False,
         **kwargs,
     ) -> None:
-        if reward_weights.shape[0] != 5:
-            raise ValueError(f"Must supply 5 reward weights, {reward_weights=}")
+        if reward_weights.shape[0] != 6:
+            raise ValueError(f"Must supply 6 reward weights, {reward_weights=}")
 
         self._reward_weights = reward_weights
         self._n_features = reward_weights.shape[0]
@@ -177,12 +177,19 @@ class Miner(FeatureEnv[MinerState]):
         )
 
         diamonds = np.array(self.diamonds, dtype=np.float32)
+        exits = np.array(
+            [
+                Miner.reached_exit(state, n_diamonds)
+                for state, n_diamonds in zip(self.states, self.diamonds)
+            ]
+        )
 
         assert len(pickup) == self.num
         assert len(dangers) == self.num
         assert len(dists) == self.num
         assert len(diamonds) == self.num
         assert len(step_in_mud) == self.num
+        assert len(exits) == self.num
 
         if self.use_normalized_features:
             max_dist = float(self.states[0].grid.shape[0] * 2 - 1)
@@ -192,7 +199,7 @@ class Miner(FeatureEnv[MinerState]):
             diamonds /= max_diamonds
 
         features = np.array(
-            [pickup, step_in_mud, dangers, dists, diamonds], dtype=np.float32
+            [pickup, step_in_mud, dangers, dists, diamonds, exits], dtype=np.float32
         ).T
         assert features.shape == (self.num, self._n_features)
 
@@ -301,3 +308,7 @@ class Miner(FeatureEnv[MinerState]):
                 f"Mud tiles increased from {last_n_mud} to {n_mud} and first={first}."
             )
         return n_mud != last_n_mud
+
+    @staticmethod
+    def reached_exit(state: MinerState, n_diamonds: int) -> bool:
+        return n_diamonds == 0 and state.agent_pos == state.exit_pos
