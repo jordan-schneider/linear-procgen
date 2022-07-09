@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Literal, Optional, Union, overload
+from typing import TYPE_CHECKING, Literal, Optional, Union
 
 import numpy as np
 from gym3 import ExtractDictObWrapper  # type: ignore
@@ -9,7 +11,9 @@ from procgen.env import ProcgenGym3Env
 
 from linear_procgen import Maze, Miner
 from linear_procgen.feature_envs import FeatureEnv
-from linear_procgen.logged_env.writer import SequentialWriter
+
+if TYPE_CHECKING:
+    from linear_procgen.logged_env.writer import SequentialWriter
 
 ENV_NAMES = Literal["maze", "miner"]
 

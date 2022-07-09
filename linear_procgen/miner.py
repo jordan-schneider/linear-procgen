@@ -93,6 +93,7 @@ class Miner(FeatureEnv[MinerState]):
         if reward_weights.shape[0] != 6:
             raise ValueError(f"Must supply 6 reward weights, {reward_weights=}")
 
+        self.stale_features = True
         self._reward_weights = reward_weights
         self._n_features = reward_weights.shape[0]
         self.use_normalized_features = normalize_features
