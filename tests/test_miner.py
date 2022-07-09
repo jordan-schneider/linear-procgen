@@ -424,7 +424,7 @@ def follow_path(env: Miner, path: Sequence[Action]) -> bool:
 )
 def test_reward(seed: int, reward_weights: np.ndarray) -> None:
     env = Miner(reward_weights=reward_weights, num=1, rand_seed=seed)
-    features = env.make_features()
+    features = env.get_features()
 
     rewards, _, _ = env.observe()
     assert np.array_equal(rewards, features @ reward_weights)
@@ -444,6 +444,6 @@ def test_normalized_features(seed: int, actions: List[int]) -> None:
     )
     for action in actions:
         env.act(np.array([action]))
-        features = env.make_features()
+        features = env.get_features()
         assert np.all(features >= 0)
         assert np.all(features <= 1)
