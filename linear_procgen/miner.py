@@ -6,13 +6,15 @@ import numpy as np
 from linear_procgen.feature_envs import FeatureEnv, StateInterface
 from linear_procgen.gym3_util import recover_grid
 
+# Array of L_1 distances along a grid of size at most (34, 34).
 __DIST_ARRAY = np.array(
     [[np.abs(x) + np.abs(y) for x in range(-34, 35)] for y in range(-34, 35)]
 )
-DIAMOND_PERCENT = 12 / 400.0  # from miner.cpp
+DIAMOND_PERCENT = 12 / 400.0  # from miner.cpp in procgen
 
 
 def get_dist_array(agent_x: int, agent_y: int, width: int, height: int) -> np.ndarray:
+    """Returns a (width, height) array containing the distance between the agent and each cell in the grid."""
     return __DIST_ARRAY[
         34 - agent_x : 34 - agent_x + width, 34 - agent_y : 34 - agent_y + height
     ]
@@ -117,7 +119,7 @@ class Miner(FeatureEnv[MinerState]):
         )
         self.firsts = [True] * num
 
-        self.features = self.make_features()
+        self.get_features()
 
     def act(self, action: np.ndarray) -> None:
         super().act(action)
@@ -130,13 +132,12 @@ class Miner(FeatureEnv[MinerState]):
         self.muds = np.array(
             [Miner.muds_remaining(state) for state in self.states], dtype=np.float32
         )
+        self.stale_features = True
 
     def observe(self) -> Tuple[np.ndarray, Any, Any]:
         _, observations, self.firsts = super().observe()
 
-        # compute features
-        self.features = self.make_features()
-        rewards = self.features @ self._reward_weights
+        rewards = self.get_features() @ self._reward_weights
 
         return rewards, observations, self.firsts
 
@@ -150,7 +151,9 @@ class Miner(FeatureEnv[MinerState]):
         exit_pos = cast(Tuple[int, int], tuple(info["exit_pos"]))
         return Miner.State(info["grid_size"], info["grid"], agent_pos, exit_pos)
 
-    def make_features(self) -> np.ndarray:
+    def get_features(self) -> np.ndarray:
+        if not self.stale_features:
+            return self.features
         dangers = np.array([self.in_danger(state) for state in self.states])
         dists = np.array(
             [
@@ -203,6 +206,8 @@ class Miner(FeatureEnv[MinerState]):
         ).T
         assert features.shape == (self.num, self._n_features)
 
+        self.features = features
+        self.stale_features = False
         return features
 
     @property
@@ -254,6 +259,16 @@ class Miner(FeatureEnv[MinerState]):
     def dist_to_diamond(
         state: MinerState, diamonds_remaining: int, return_pos: bool = False
     ) -> Union[int, Tuple[int, Tuple[int, int]]]:
+        """Determines the distance between the agent and the nearest diamond, or 0 if there are no diamonds remaining.
+
+        Args:
+            state (MinerState): Current state of the miner environment.
+            diamonds_remaining (int): Number of diamonds remaining in the environment. We could recompute this from the state but we already have it.
+            return_pos (bool, optional): Additionally return the position of that nearest diamond. Defaults to False.
+
+        Returns:
+            Union[int, Tuple[int, Tuple[int, int]]]: Either the distance to the nearest diamond, or the distance and position of the nearest diamond.
+        """
         if diamonds_remaining == 0:
             if return_pos:
                 return 0, (-1, -1)
@@ -262,7 +277,18 @@ class Miner(FeatureEnv[MinerState]):
 
         agent_x, agent_y = state.agent_pos
         width, height = state.grid.shape
-        diamonds = cast(np.ndarray, np.logical_or(state.grid == 2, state.grid == 4))
+
+        codes = MinerState.grid_item_codes()
+        diamonds = cast(
+            np.ndarray,
+            np.logical_or(
+                state.grid == codes["diamond"], state.grid == codes["moving_diamond"]
+            ),
+        )
+
+        # Because our arrays are small and our cpu is good at array ops, it's faster to find the distance of the nearest
+        # diamond by precomputing an array of L1 distances, finding the distances to diamonds by masking, and then
+        # finding the minimum. Searching via floodfill/bfs turned out to be slower.
         dists = get_dist_array(agent_x, agent_y, width, height)
         diamond_dists = np.ma.array(dists, mask=np.logical_not(diamonds))
         pos_closest_diamond = cast(
@@ -278,6 +304,7 @@ class Miner(FeatureEnv[MinerState]):
 
     @staticmethod
     def diamonds_remaining(state: MinerState) -> int:
+        """Returns how many diamonds are left in the environment."""
         codes = MinerState.grid_item_codes()
         return np.sum(
             (state.grid == codes["diamond"]) | (state.grid == codes["moving_diamond"])
@@ -285,10 +312,12 @@ class Miner(FeatureEnv[MinerState]):
 
     @staticmethod
     def muds_remaining(state: MinerState) -> int:
+        """Returns how many tiles of mud there are in the environment."""
         return np.sum((state.grid == MinerState.grid_item_codes()["mud"]))
 
     @staticmethod
     def got_diamond(n_diamonds: int, last_n_diamonds: int, first: bool) -> bool:
+        """Returns if the agent has just picked up a diamond this timestep."""
         if first:
             return False
 
@@ -300,6 +329,7 @@ class Miner(FeatureEnv[MinerState]):
 
     @staticmethod
     def got_mud(n_mud: int, last_n_mud: int, first: bool) -> bool:
+        """Returns if the agent has just dug through some mud this timestep."""
         if first:
             return False
 
@@ -311,4 +341,5 @@ class Miner(FeatureEnv[MinerState]):
 
     @staticmethod
     def reached_exit(state: MinerState, n_diamonds: int) -> bool:
+        """Returns if the agent has successfully mined all the diamonds and left the mine."""
         return n_diamonds == 0 and state.agent_pos == state.exit_pos

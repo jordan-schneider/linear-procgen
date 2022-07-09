@@ -10,13 +10,13 @@ def test_step():
     env = Maze(np.zeros(2), num_envs)
     obs, reward, first = env.observe()
     states = env.make_latent_states()
-    features = env.make_features()
+    features = env.get_features()
 
     env.act(np.zeros(num_envs))
 
     obs, reward, first = env.observe()
     states = env.make_latent_states()
-    features = env.make_features()
+    features = env.get_features()
 
 
 def find_first_action(path: List[Tuple[int, int]], action_dict: Dict[str, int]) -> int:
@@ -40,14 +40,14 @@ def test_correct_action():
         env = Maze(np.zeros(2), num_envs)
         path = env.get_shortest_paths()[0]
         assert len(path) >= 2, f"path too short: {path}"
-        start_features = env.make_features()[0]
+        start_features = env.get_features()[0]
 
         action = find_first_action(path, env.ACTION_DICT)
 
         env.act(np.array([action]))
         _, _, firsts = env.observe()
 
-        end_features = env.make_features()[0]
+        end_features = env.get_features()[0]
         assert firsts[0] or end_features[0] < start_features[0]
         assert (
             firsts[0] or end_features[1] == 1
@@ -61,7 +61,7 @@ def test_incorrect_action():
         path = env.get_shortest_paths()[0]
         assert len(path) >= 2, f"path too short: {path}"
 
-        start_features = env.make_features()[0]
+        start_features = env.get_features()[0]
 
         good_action = find_first_action(path, env.ACTION_DICT)
 
@@ -99,7 +99,7 @@ def test_incorrect_action():
 
         _, _, first = env.observe()
 
-        end_features = env.make_features()[0]
+        end_features = env.get_features()[0]
         assert end_features[0] > start_features[0]
         assert first or end_features[1] == -1
 
@@ -111,7 +111,7 @@ def test_bump_action():
         path = env.get_shortest_paths()[0]
         assert len(path) >= 2, f"path too short: {path}"
 
-        start_features = env.make_features()[0]
+        start_features = env.get_features()[0]
 
         good_action = find_first_action(path, env.ACTION_DICT)
 
@@ -149,7 +149,7 @@ def test_bump_action():
 
         _, _, first = env.observe()
 
-        end_features = env.make_features()[0]
+        end_features = env.get_features()[0]
         assert end_features[0] == start_features[0]
         assert first or end_features[1] == 0
 
