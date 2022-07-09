@@ -88,6 +88,9 @@ class Maze(FeatureEnv[MazeState]):
         # Is this the first state of an episode? for each of num environments
         self.firsts = np.ones(num, dtype=bool)
         self.make_latent_states()
+
+        # get_shortest_paths assumes the path list exists
+        self.shortest_paths: List[List[Tuple[int, int]]] = [[]] * self.num
         self.shortest_paths = self.get_shortest_paths()
         self.last_dists = self.get_dists(self.shortest_paths)
         self.features = np.stack((self.last_dists, np.zeros(num, dtype=int)), axis=1)
@@ -137,10 +140,11 @@ class Maze(FeatureEnv[MazeState]):
         """
         for i in range(self.num):
             state = self.make_latent_states()[i]
-            path = self.shortest_paths[i]
             if self.firsts[i]:
                 self.shortest_paths[i] = self.find_shortest_path(state)
             else:
+                path = self.shortest_paths[i]
+
                 if state.agent_pos == (*path[1],):
                     # If the agent took a step along the shortest path, you know the rest of that path is still the shortest from the new position.
                     self.shortest_paths[i] = path[1:]
