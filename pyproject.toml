@@ -32,5 +32,5 @@ test = [
 repository = "https://github.com/jordan-schneider/linear-procgen"
 
 [tool.setuptools]
-packages = ["linear_procgen"]
+packages = ["linear_procgen", "linear_procgen.logged_env"]
 package-data = {linear_procgen = ["py.typed"]}
