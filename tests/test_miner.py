@@ -447,3 +447,15 @@ def test_normalized_features(seed: int, actions: List[int]) -> None:
         features = env.get_features()
         assert np.all(features >= 0)
         assert np.all(features <= 1)
+
+
+def test_set_miner_state():
+    env = Miner(reward_weights=np.zeros(N_FEATURES), num=1, rand_seed=0)
+    states = env.make_latent_states()
+
+    env.act(np.array([RIGHT]))
+
+    env.set_miner_state(states)
+    new_state = env.make_latent_states()[0]
+
+    assert states[0] == new_state
