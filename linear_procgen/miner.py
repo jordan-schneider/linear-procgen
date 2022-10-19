@@ -63,17 +63,17 @@ class MinerState(StateInterface):
         return True
 
     def to_bytes(self) -> bytes:
-        c_grid = self.grid.transpose().flatten()
+        c_grid = self.grid.transpose().flatten().astype(int)
         c_grid.resize(35 * 35)
         return (
-            bytes(c_int(self.grid.shape[0]))
-            + bytes(c_int(self.grid.shape[1]))
+            bytes(c_int(int(self.grid.shape[0])))
+            + bytes(c_int(int(self.grid.shape[1])))
             + bytes(c_int(35 * 35))
             + bytes(np.ctypeslib.as_ctypes(c_grid))
-            + bytes(c_int(self.agent_pos[0]))
-            + bytes(c_int(self.agent_pos[1]))
-            + bytes(c_int(self.exit_pos[0]))
-            + bytes(c_int(self.exit_pos[1]))
+            + bytes(c_int(int(self.agent_pos[0])))
+            + bytes(c_int(int(self.agent_pos[1])))
+            + bytes(c_int(int(self.exit_pos[0])))
+            + bytes(c_int(int(self.exit_pos[1])))
         )
 
 
