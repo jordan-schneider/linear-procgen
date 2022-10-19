@@ -1,4 +1,4 @@
-import logging
+from ctypes import c_int
 from typing import Any, Dict, Final, List, Tuple, Union, cast
 
 import numpy as np
@@ -61,6 +61,20 @@ class MinerState(StateInterface):
         if not self.exit_pos == other.exit_pos:
             return False
         return True
+
+    def to_bytes(self) -> bytes:
+        c_grid = self.grid.transpose().flatten()
+        c_grid.resize(35 * 35)
+        return (
+            bytes(c_int(self.grid.shape[0]))
+            + bytes(c_int(self.grid.shape[1]))
+            + bytes(c_int(35 * 35))
+            + bytes(np.ctypeslib.as_ctypes(c_grid))
+            + bytes(c_int(self.agent_pos[0]))
+            + bytes(c_int(self.agent_pos[1]))
+            + bytes(c_int(self.exit_pos[0]))
+            + bytes(c_int(self.exit_pos[1]))
+        )
 
 
 class Miner(FeatureEnv[MinerState]):
@@ -210,6 +224,12 @@ class Miner(FeatureEnv[MinerState]):
         self.features = features
         self.stale_features = False
         return features
+
+    def set_miner_state(self, states: List[MinerState]) -> None:
+        assert len(states) == self.num
+        for i in range(self.num):
+            c_state = states[i].to_bytes()
+            self.call_c_func("set_miner_state", i, c_state, len(c_state))
 
     @property
     def n_features(self) -> int:
