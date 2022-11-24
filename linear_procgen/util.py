@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import logging
-from typing import TYPE_CHECKING, Literal, Optional, Union
+from typing import TYPE_CHECKING, Literal, Optional, Union, cast
 
 import numpy as np
 from gym3 import ExtractDictObWrapper  # type: ignore
 from gym3.env import Env  # type: ignore
 from gym3.wrapper import Wrapper  # type: ignore
-from procgen.env import ProcgenGym3Env
 
 from linear_procgen import Maze, Miner
 from linear_procgen.feature_envs import FeatureEnv
@@ -81,3 +79,10 @@ def get_root_env(env: Wrapper, max_layers: int = 100) -> Env:
     if layer == max_layers:
         raise RuntimeError("Infinite loop looking for root_env")
     return root_env
+
+
+def assure_env(val: str) -> ENV_NAMES:
+    if not (val == "maze" or val == "miner"):
+        raise ValueError(f"Unknown env name: {val}. Supported names are {ENV_NAMES}")
+
+    return cast(ENV_NAMES, val)
